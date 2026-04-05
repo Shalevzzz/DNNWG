@@ -1,34 +1,32 @@
 import os
-
 import torch
 import torch.nn.functional as F
-import yaml
 from torch.utils.data import Dataset
-import collections
-from glob import glob
-
-
-
-def load_config(file_path):
-    with open(file_path, "r") as f:
-        return yaml.safe_load(f)
 
 
 def matpadder(x, max_in=512):
-    shape = x.shape
-    # delta1 = max_in - shape[0]
-    delta2 = max_in - shape[1]
-
+    delta2 = max_in - x.shape[1]
     out = F.pad(x, (0, delta2, 0, 0), "constant", 0)
     return out
 
-class ZooDataset(Dataset):
-    """weights dataset."""
 
-    def __init__(self, root='zoodata', dataset='joint', split='train', scale=1.0, num_sample=5, topk=None, transform=None,
-                 normalize=False,
-                 max_len=2864):
-        super(ZooDataset, self).__init__()
+class ZooDataset(Dataset):
+    """weights dataset for stage 2."""
+
+    def __init__(
+        self,
+        root='zoodata',
+        dataset='joint',
+        split='train',
+        scale=1.0,
+        num_sample=5,
+        topk=None,
+        transform=None,
+        normalize=False,
+        max_len=2864,
+        cond_path='clip_encode_dsets_20_cond_.pt',
+    ):
+        super().__init__()
         self.dataset = dataset
         self.topk = topk
         self.max_len = max_len
@@ -37,12 +35,13 @@ class ZooDataset(Dataset):
         self.num_sample = num_sample
         self.scale = scale
         self.root = root
-        datapath = os.path.join(root, f'weights/{split}_data')
-
-
         self.transform = transform
 
+        datapath = os.path.join(root, f'weights/{split}_data')
         self.data = self.load_data(datapath)
+
+        # load all condition data once
+        self.cond_data = torch.load(cond_path, map_location="cpu", weights_only=False)
 
     def __len__(self):
         return len(self.data)
@@ -52,66 +51,49 @@ class ZooDataset(Dataset):
             idx = idx.tolist()
 
         weights = self.data[idx]
-        # targets = self.targets[idx]
-        # flrs = os.listdir("../Datasets/imnet1kzoo/condata")
-        wl = []
-        conds = []
         keys = list(weights)
+
+        conds = []
+        weight = None
+
         for k in keys:
-            w = weights[k]/self.scale
+            w = weights[k] / self.scale   # [1, D]
+            if len(w.shape) < 2:
+                w = w.unsqueeze(0)
             if w.shape[1] < self.max_len:
                 w = matpadder(w, self.max_len)
-            x = torch.load(f"../Datasets/imnet1kzoo/res50_mixe4d_20k_condata/{k}/train_cond_.pt")
-            # x = targets[k]
-            # cdata = []
-            num_class = len(x)
-            classes = list(range(num_class))
-            # print(num_class)
-            xd = []
-            # enabling sampling new batch of image during training
-            for i in range(w.shape[0]):
-                cdata = []
-                for cls in classes:
-                    cx = x[cls]
-                    ridx = torch.randperm(len(cx))
-                    cdata.append(cx[ridx][:self.num_sample])
-                # xd.append(torch.stack(cdata, 0))
-                conds.append(torch.stack(cdata, 0).type(torch.float32))
-            wl.append(w)
-        target = conds
-        weight = w
-        sample = {'weight': weight, 'dataset': target}
-        del x
+
+            x = self.cond_data[k]   # e.g. self.cond_data["mnist"]
+
+            classes = list(range(len(x)))
+            cdata = []
+            for cls in classes:
+                cx = x[cls]                 # [20, 512]
+                ridx = torch.randperm(len(cx))
+                cdata.append(cx[ridx][:self.num_sample])
+
+            conds.append(torch.stack(cdata, 0).type(torch.float32))  # [10, 5, 512]
+            weight = w
+
+        sample = {
+            "weight": weight,      # [1, 2864]
+            "dataset": conds       # [ [10, 5, 512] ]
+        }
         return sample
 
     def load_data(self, file):
-        data = torch.load(file)
-        # xc = torch.load('../Datasets/vitzoo/conds/clip_dsets_train_40_conds_vit_.pt')
-        # xc = torch.load('../Datasets/imnet21kzoo/swint/for_clip_20_samples_swint_train_.pt')
-        # flrs = os.listdir("../Datasets/imnet1kzoo/condata")
+        data = torch.load(file, map_location="cpu", weights_only=False)
         xdata = []
-        cond = []
-        ydata = []
-        # weights ={}
-        # y = {}
+
         keys = list(data)
         for k in keys:
-            # if k not in toreomve:
+            w = data[k][0].detach().cpu()
 
-            w = data[k][0]
-
-            w = w.detach().cpu()
-            if len(w.shape)<2:
+            if len(w.shape) < 2:
                 w = w.unsqueeze(0)
-            # for i in range(w.shape[0]):
-            xdata.append({k: w})
-            # cond.append({k: xc[k]})
-            # ydata.append({k: y})
 
-        # xdata = [{k:v} for k,v in data.items()]
-        # ydata = [{k:v} for k,v in xc.items()]
+            # split into one sample per row/model
+            for i in range(w.shape[0]):
+                xdata.append({k: w[i:i+1]})   # keep shape [1, D]
 
         return xdata
-
-
-

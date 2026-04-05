@@ -34,8 +34,9 @@ class ZooDataModule(pl.LightningDataModule):
         # self.transform = []
 
     def prepare_data(self):
-        datasets.CIFAR10(self.data_root, train=True, download=True)
-        datasets.CIFAR10(self.data_root, train=False, download=True)
+        pass
+        # datasets.CIFAR10(self.data_root, train=True, download=True)
+        # datasets.CIFAR10(self.data_root, train=False, download=True)
 
     def setup(self, stage):
 

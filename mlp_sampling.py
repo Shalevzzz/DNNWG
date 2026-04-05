@@ -1,6 +1,6 @@
 from helpers.helpers import *
-from loaders.testloaders import get_loader
-from helpers.misc import progress_bar
+# from loaders.testloaders import get_loader
+# from helpers.misc import progress_bar
 
 import argparse, os, sys, datetime, glob
 import numpy as np
@@ -26,7 +26,7 @@ from pytorch_lightning.utilities import rank_zero_info
 # from data.base import Txt2ImgIterableBaseDataset
 from utils.util import instantiate_from_config
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 def get_parser(**parser_kwargs):
     def str2bool(v):
         if isinstance(v, bool):
@@ -314,11 +314,85 @@ def split_sample_cond(x, split=100, n=3, num_sample=5):
 
 from zoomodels.clizoomodel import *
 # from data_utils.kaggle_loader import load_data
-# from data_utils.tinyloader import load_data
-from data_utils.imnetloader import load_base_data
-from ofa.imagenet_classification.elastic_nn.utils import set_running_statistics
+# # from data_utils.tinyloader import load_data
+# from data_utils.imnetloader import load_base_data
+# from ofa.imagenet_classification.elastic_nn.utils import set_running_statistics
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
+#     # define loss function (criterion) and optimizer
+#     criterions = nn.CrossEntropyLoss().cuda()
+
+#     criterion = nn.CrossEntropyLoss().cuda()
+#     now = datetime.datetime.now().strftime("%Y-%m-%dT%H-%M-%S")
+#     # sys.path.append(os.getcwd())
+
+#     parser = get_parser()
+#     args = parser.parse_args()
+#     opt, unknown = parser.parse_known_args()
+#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#     nowname = opt.name + now
+#     print(opt.base)
+#     print('----------------------')
+
+#     if isinstance(opt.base, (list, tuple)):
+#         configs = [OmegaConf.load(cfg) for cfg in opt.base]
+#     else:
+#         configs = [OmegaConf.load(opt.base)]
+#     cli = OmegaConf.from_dotlist(unknown)
+#     config = OmegaConf.merge(*configs, cli)
+#     # autoencoder = instantiate_from_config(config.model)
+#     # args = parser.parse_args()
+#     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+#     ldmmodel = instantiate_from_config(config.model)
+
+#     std = torch.load('ldm_checkpoints/checkpoint_ldm_model_epoch=6_.ckpt')['state_dict']
+#     ldmmodel.load_state_dict(std)
+#     ldmmodel = ldmmodel.to(device)
+#     ldmmodel.eval()
+
+
+#     root = '../Datasets'
+#     conds = torch.load('clip_encode_dsets_20_cond_.pt')
+
+#     ##################################################333
+
+#     dsets = list(conds)
+
+
+#     scale = 1.0
+#     split = False
+#     for dset in dsets:
+#         val_loader, val_loaders, n_classes = load_base_data(root, dset, batch_size=512)
+#         print(f'==> evating on {dset}......{n_classes}........')
+#         x = conds[dset]
+#         xc = sample_cond(x, n=50, num_sample=5)
+#         print(xc.shape)
+#         xc = xc.type(torch.float32)
+#         wl =[]
+#         pw = []
+#         pb =[]
+#         #
+#         weight = ldmmodel.sample(cond=xc.to(device))
+#         ac =[]
+#         best =0.0
+#         for w in weight:
+#             pass
+#         #     model = Classifier(in_dim=768, n_classes=n_classes)
+#         #     set_weights(model, w * scale)
+#         #     model.cuda()
+#         #     acc = validate(val_loader, model, criterions)
+#         #     print(f'test accuracy===== {acc} =========')
+#         #     if acc > best:
+#         #         best = acc
+#         #     ac.append(acc)
+#         # ac = sorted(ac, reverse=True)
+#         # print(best)
+#         # print(f' {dset} mean: {np.mean(ac[:3])} std: {np.std(ac[:3])}')
+
+#         print('**********************************************************')
+
+if __name__=="__main__":
     # define loss function (criterion) and optimizer
     criterions = nn.CrossEntropyLoss().cuda()
 
@@ -333,58 +407,30 @@ if __name__ == '__main__':
     nowname = opt.name + now
     print(opt.base)
     print('----------------------')
-    configs = [OmegaConf.load(opt.base)]
+    configs = [OmegaConf.load(cfg) for cfg in opt.base]
     cli = OmegaConf.from_dotlist(unknown)
     config = OmegaConf.merge(*configs, cli)
-    # autoencoder = instantiate_from_config(config.model)
-    # args = parser.parse_args()
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     ldmmodel = instantiate_from_config(config.model)
 
-    std = torch.load('ldm_checkpoints/checkpoint_ldm_model.pt')['state_dict']
+    std = torch.load(r'ldm_checkpoints/checkpoint_ldm_model_epoch=6_.ckpt', map_location='cpu')['state_dict']
     ldmmodel.load_state_dict(std)
     ldmmodel = ldmmodel.to(device)
     ldmmodel.eval()
 
+    conds = torch.load(r'clip_encode_dsets_20_cond_.pt', map_location='cpu')
 
-    root = 'path to dataset'
-    conds = torch.load('path to conditioned features dataset')
+    dsets = ["mnist"]
 
-    ##################################################333
-
-    dsets = list(conds)
-
-
-    scale = 1.0
-    split = False
     for dset in dsets:
-        val_loader, val_loaders, n_classes = load_base_data(root, dset, batch_size=512)
-        print(f'==> evating on {dset}......{n_classes}........')
         x = conds[dset]
-        xc = sample_cond(x, n=50, num_sample=5)
-        print(xc.shape)
-        xc = xc.type(torch.float32)
-        wl =[]
-        pw = []
-        pb =[]
-        #
-        weight = ldmmodel.sample(cond=xc.to(device))
-        ac =[]
-        best =0.0
-        for w in weight:
-            pass
-        #     model = Classifier(in_dim=768, n_classes=n_classes)
-        #     set_weights(model, w * scale)
-        #     model.cuda()
-        #     acc = validate(val_loader, model, criterions)
-        #     print(f'test accuracy===== {acc} =========')
-        #     if acc > best:
-        #         best = acc
-        #     ac.append(acc)
-        # ac = sorted(ac, reverse=True)
-        # print(best)
-        # print(f' {dset} mean: {np.mean(ac[:3])} std: {np.std(ac[:3])}')
+        xc = sample_cond(x, n=10, num_sample=5).type(torch.float32)
+        print("cond shape:", xc.shape)
 
-        print('**********************************************************')
+        with torch.no_grad():
+            weight = ldmmodel.sample(cond=xc.to(device))
 
+        print("sampled type:", type(weight))
+        if hasattr(weight, "shape"):
+            print("sampled shape:", weight.shape)
+        torch.save(weight.cpu(), f"generated_weights_{dset}.pt")

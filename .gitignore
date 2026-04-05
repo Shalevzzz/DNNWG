@@ -211,3 +211,7 @@ logs/
 .vscode/
 .venv/
 *__pycache__/
+*.pt
+*.ckpt
+*.log
+lightning_logs/

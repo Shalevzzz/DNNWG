@@ -18,14 +18,30 @@ from zoodatasets.sampler import ZooDataset
 
 def my_collate(batch):
     sample = {}
-    data = [item['weight'][0] for item in batch]
-    conds = [item['dataset'] for item in batch]
-    target =[]
-    for items in conds:
-        target += [item for item in items]
-    data = torch.cat(data, 0)
-    sample['weight']=data
-    sample['dataset'] = target
+
+    # each item["weight"] should be [1, D] or similar
+    data = [item["weight"] for item in batch]
+    data = torch.cat(data, dim=0).type(torch.float32)   # -> [B, D]
+
+    # each item["dataset"] is a list of condition tensors
+    # in your sampler, there is effectively one condition tensor per item
+    conds = []
+    for item in batch:
+        item_conds = item["dataset"]
+
+        if isinstance(item_conds, list):
+            # for your current sampler, keep one condition tensor per item
+            # if there are multiple, stack them and use the first
+            if len(item_conds) == 1:
+                conds.append(item_conds[0])
+            else:
+                conds.append(torch.stack(item_conds, dim=0)[0])
+        else:
+            conds.append(item_conds)
+
+    # -> [B, 10, 5, 512]
+    sample["weight"] = data
+    sample["dataset"] = torch.stack(conds, dim=0).type(torch.float32)
 
     return sample
 
@@ -57,8 +73,9 @@ class ZooDataModule(pl.LightningDataModule):
         # self.transform = []
 
     def prepare_data(self):
-        datasets.CIFAR10(self.data_root, train=True, download=True)
-        datasets.CIFAR10(self.data_root, train=False, download=True)
+        pass
+        # datasets.CIFAR10(self.data_root, train=True, download=True)
+        # datasets.CIFAR10(self.data_root, train=False, download=True)
 
     def setup(self, stage):
 

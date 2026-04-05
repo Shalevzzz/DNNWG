@@ -157,7 +157,12 @@ if __name__ == "__main__":
     # parser = Trainer.add_argparse_args(parser)
     opt, unknown = parser.parse_known_args()
     nowname= opt.name+now
-    configs = [OmegaConf.load(opt.base)]
+    print("opt.base:", opt.base, type(opt.base))
+
+    if isinstance(opt.base, (list, tuple)):
+        configs = [OmegaConf.load(cfg) for cfg in opt.base]
+    else:
+        configs = [OmegaConf.load(opt.base)]
     cli = OmegaConf.from_dotlist(unknown)
     config = OmegaConf.merge(*configs, cli)
     model = instantiate_from_config(config.model)
