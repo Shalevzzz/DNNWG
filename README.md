@@ -1,5 +1,9 @@
 # DIFFUSION BASED NEURAL NETWORK WEIGHTS GENERATION
 Neural-network-parameters-with-Diffusion
+
+# Model Zoo
+https://github.com/ModelZoos/ModelZooDataset
+
 # DoTO
 
 # Structure of the code
